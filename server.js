@@ -169,7 +169,9 @@ app.get("/api/admin/export.csv", adminRequired, async (_, res) => {
   res.send(csv);
 });
 
-app.get("*", (_, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.get("/{*splat}", (_, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 initDb().then(() => app.listen(PORT, () => console.log(`SAP Semi Visitor System running on ${PORT}`)))
   .catch(err => { console.error(err); process.exit(1); });
