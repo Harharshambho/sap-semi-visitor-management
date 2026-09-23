@@ -1,0 +1,16 @@
+{
+  "name": "sap-semi-visitor-management",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Visitor Management System for SAP Semi Pvt Ltd",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "pg": "^8.16.3"
+  }
+}
