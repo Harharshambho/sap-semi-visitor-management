@@ -1272,4 +1272,657 @@ app.get(
 );
 
 
-/* =======
+/* =========================================================
+   GET ALL PHOTOS FOR VISITOR
+========================================================= */
+
+app.get(
+  "/api/visitors/:id/photos",
+  authRequired,
+  async (req, res) => {
+
+    try {
+
+      const id =
+        Number(
+          req.params.id
+        );
+
+
+      if (
+        !Number.isInteger(id)
+      ) {
+
+        return res.status(400).json({
+          error:
+            "Invalid visitor ID."
+        });
+
+      }
+
+
+      const r =
+        await pool.query(
+          `
+          SELECT
+            id,
+            photo_type,
+            photo_label,
+            created_at,
+
+            '/api/visitor-photos/'
+            || id
+            || '/image'
+            AS photo_url
+
+          FROM visitor_photos
+
+          WHERE visitor_id=$1
+
+          ORDER BY id ASC
+          `,
+          [id]
+        );
+
+
+      res.json(
+        r.rows
+      );
+
+
+    } catch (e) {
+
+      console.error(
+        "Visitor photos error:",
+        e
+      );
+
+
+      res.status(500).json({
+        error:
+          "Could not load visitor photos."
+      });
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   INDIVIDUAL EXTRA PHOTO
+========================================================= */
+
+app.get(
+  "/api/visitor-photos/:photoId/image",
+  authRequired,
+  async (req, res) => {
+
+    try {
+
+      const id =
+        Number(
+          req.params.photoId
+        );
+
+
+      if (
+        !Number.isInteger(id)
+      ) {
+
+        return res.status(400).end();
+
+      }
+
+
+      const r =
+        await pool.query(
+          `
+          SELECT
+            photo,
+            photo_type
+          FROM visitor_photos
+          WHERE id=$1
+          `,
+          [id]
+        );
+
+
+      if (!r.rows[0]) {
+
+        return res.status(404).end();
+
+      }
+
+
+      res.set(
+        "Content-Type",
+        r.rows[0].photo_type
+      );
+
+
+      res.end(
+        r.rows[0].photo
+      );
+
+
+    } catch (e) {
+
+      console.error(
+        "Extra photo error:",
+        e
+      );
+
+
+      res.status(500).end();
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   VISITOR CHECK-OUT
+   USER + ADMIN + SUPER ADMIN
+========================================================= */
+
+app.post(
+  "/api/visitors/:id/out",
+  authRequired,
+  async (req, res) => {
+
+    try {
+
+      const id =
+        Number(
+          req.params.id
+        );
+
+
+      if (
+        !Number.isInteger(id)
+      ) {
+
+        return res.status(400).json({
+          error:
+            "Invalid visitor ID."
+        });
+
+      }
+
+
+      const r =
+        await pool.query(
+          `
+          UPDATE visitors
+
+          SET
+            status='OUT',
+            out_time=NOW()
+
+          WHERE
+            id=$1
+            AND status='IN'
+
+          RETURNING
+            id,
+            out_time,
+            status
+          `,
+          [id]
+        );
+
+
+      if (!r.rows[0]) {
+
+        return res.status(404).json({
+          error:
+            "Visitor is already checked out or not found."
+        });
+
+      }
+
+
+      res.json({
+
+        message:
+          "Visitor checked out.",
+
+        visitor:
+          r.rows[0],
+
+        checked_out_by:
+          req.user.username,
+
+        checked_out_by_role:
+          req.user.role
+
+      });
+
+
+    } catch (e) {
+
+      console.error(
+        "Checkout error:",
+        e
+      );
+
+
+      res.status(500).json({
+        error:
+          "Could not check out visitor."
+      });
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   ADMIN VISITOR HISTORY
+   ADMIN + SUPER ADMIN
+========================================================= */
+
+app.get(
+  "/api/admin/visitors",
+  adminRequired,
+  async (req, res) => {
+
+    try {
+
+      const q =
+        String(
+          req.query.q || ""
+        ).trim();
+
+      const date =
+        String(
+          req.query.date || ""
+        ).trim();
+
+
+      const params = [];
+
+      const where = [];
+
+
+      /*
+       * Search
+       */
+
+      if (q) {
+
+        params.push(
+          `%${q}%`
+        );
+
+
+        where.push(
+          `
+          (
+            name ILIKE $${params.length}
+            OR mobile ILIKE $${params.length}
+            OR company ILIKE $${params.length}
+            OR person_to_meet ILIKE $${params.length}
+            OR purpose ILIKE $${params.length}
+            OR vehicle_no ILIKE $${params.length}
+          )
+          `
+        );
+
+      }
+
+
+      /*
+       * Date filter
+       */
+
+      if (date) {
+
+        params.push(
+          date
+        );
+
+
+        where.push(
+          `
+          DATE(
+            in_time
+            AT TIME ZONE 'Asia/Kolkata'
+          )
+          =
+          $${params.length}::date
+          `
+        );
+
+      }
+
+
+      const sql = `
+        SELECT
+
+          id,
+          name,
+          mobile,
+          company,
+          person_to_meet,
+          purpose,
+          vehicle_no,
+          in_time,
+          out_time,
+          status,
+
+          '/api/visitors/'
+          || id
+          || '/photo'
+          AS photo_url
+
+        FROM visitors
+
+        ${
+          where.length
+            ? "WHERE " + where.join(" AND ")
+            : ""
+        }
+
+        ORDER BY in_time DESC
+
+        LIMIT 500
+      `;
+
+
+      const r =
+        await pool.query(
+          sql,
+          params
+        );
+
+
+      res.json(
+        r.rows
+      );
+
+
+    } catch (e) {
+
+      console.error(
+        "History error:",
+        e
+      );
+
+
+      res.status(500).json({
+        error:
+          "History unavailable."
+      });
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   CSV EXPORT
+   ADMIN + SUPER ADMIN
+========================================================= */
+
+app.get(
+  "/api/admin/export.csv",
+  adminRequired,
+  async (req, res) => {
+
+    try {
+
+      const r =
+        await pool.query(
+          `
+          SELECT
+            id,
+            name,
+            mobile,
+            company,
+            person_to_meet,
+            purpose,
+            vehicle_no,
+            in_time,
+            out_time,
+            status
+          FROM visitors
+          ORDER BY in_time DESC
+          `
+        );
+
+
+      const esc =
+        value => {
+
+          return `"${String(
+            value ?? ""
+          ).replaceAll(
+            '"',
+            '""'
+          )}"`;
+
+        };
+
+
+      const csv = [
+
+        [
+          "ID",
+          "Name",
+          "Mobile",
+          "Company",
+          "Person To Meet",
+          "Purpose",
+          "Vehicle No",
+          "IN Time",
+          "OUT Time",
+          "Status"
+        ]
+        .map(esc)
+        .join(","),
+
+
+        ...r.rows.map(
+          x => [
+
+            x.id,
+            x.name,
+            x.mobile,
+            x.company,
+            x.person_to_meet,
+            x.purpose,
+            x.vehicle_no,
+            x.in_time,
+            x.out_time,
+            x.status
+
+          ]
+          .map(esc)
+          .join(",")
+        )
+
+      ].join("\n");
+
+
+      res.setHeader(
+        "Content-Type",
+        "text/csv; charset=utf-8"
+      );
+
+
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="sap-semi-visitors.csv"'
+      );
+
+
+      res.send(
+        csv
+      );
+
+
+    } catch (e) {
+
+      console.error(
+        "CSV export error:",
+        e
+      );
+
+
+      res.status(500).json({
+        error:
+          "Could not export report."
+      });
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   MULTER / UPLOAD ERROR HANDLER
+========================================================= */
+
+app.use(
+  (err, req, res, next) => {
+
+    if (
+      err instanceof multer.MulterError
+    ) {
+
+      if (
+        err.code ===
+        "LIMIT_FILE_SIZE"
+      ) {
+
+        return res.status(400).json({
+          error:
+            "Each photo must be below 5 MB."
+        });
+
+      }
+
+
+      if (
+        err.code ===
+        "LIMIT_FILE_COUNT"
+      ) {
+
+        return res.status(400).json({
+          error:
+            "Maximum 10 photos are allowed."
+        });
+
+      }
+
+
+      return res.status(400).json({
+        error:
+          err.message
+      });
+
+    }
+
+
+    if (err) {
+
+      console.error(
+        "Server error:",
+        err
+      );
+
+
+      return res.status(400).json({
+        error:
+          err.message ||
+          "Request failed."
+      });
+
+    }
+
+
+    next();
+
+  }
+);
+
+
+/* =========================================================
+   FRONTEND
+========================================================= */
+
+app.get(
+  "/{*splat}",
+  (req, res) => {
+
+    res.sendFile(
+      path.join(
+        __dirname,
+        "public",
+        "index.html"
+      )
+    );
+
+  }
+);
+
+
+/* =========================================================
+   START SERVER
+========================================================= */
+
+initDb()
+  .then(
+    () => {
+
+      app.listen(
+        PORT,
+        () => {
+
+          console.log(
+            `SAP Semi Visitor System running on port ${PORT}`
+          );
+
+        }
+      );
+
+    }
+  )
+  .catch(
+    err => {
+
+      console.error(
+        "Server startup failed:",
+        err
+      );
+
+      process.exit(1);
+
+    }
+  );
+
+
+/* =========================================================
+   SHUTDOWN
+========================================================= */
+
+process.on(
+  "SIGTERM",
+  async () => {
+
+    console.log(
+      "SIGTERM received. Closing database..."
+    );
+
+    await pool.end();
+
+    process.exit(0);
+
+  }
+);
