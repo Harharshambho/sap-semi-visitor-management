@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SAP Semi Pvt Ltd | Visitor Management</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img src="/logo.png" alt="SAP Semi logo">
+    <div><strong>SAP Semi Pvt Ltd</strong><span>Visitor Management System</span></div>
+  </div>
+  <div class="top-actions">
+    <button class="btn secondary" onclick="showPage('entry')">+ New Visitor</button>
+    <button class="btn" onclick="showPage('adminLogin')">Admin</button>
+  </div>
+</header>
+
+<main>
+<section id="entry" class="page active">
+  <div class="hero">
+    <div><h1>Visitor Check-In</h1><p>Register every visitor before entry. <b>Photo is mandatory.</b></p></div>
+    <div class="live-dot"><i></i> Live Dashboard</div>
+  </div>
+  <div class="grid-2">
+    <form id="visitorForm" class="card form-card">
+      <h2>Visitor Details</h2>
+      <div class="fields">
+        <label>Visitor Name *<input name="name" required placeholder="Enter full name"></label>
+        <label>Mobile Number *<input name="mobile" required inputmode="tel" placeholder="10 digit mobile number"></label>
+        <label>Company / Firm<input name="company" placeholder="Company name"></label>
+        <label>Person to Meet *<input name="person_to_meet" required placeholder="Employee / department"></label>
+        <label>Purpose of Visit *<input name="purpose" required placeholder="Meeting, delivery, interview..."></label>
+        <label>Vehicle Number<input name="vehicle_no" placeholder="MH12AB1234"></label>
+      </div>
+      <div class="photo-box">
+        <div class="photo-preview"><span id="photoHint">📷 Photo required</span><img id="photoPreview" hidden></div>
+        <div class="photo-controls">
+          <label class="btn secondary file-btn">Take / Select Photo<input id="photo" type="file" name="photo" accept="image/*" capture="user" required></label>
+          <small>Photo is compulsory. Max 5 MB.</small>
+        </div>
+      </div>
+      <button class="btn primary wide" type="submit">CHECK IN VISITOR</button>
+      <div id="formMsg" class="message"></div>
+    </form>
+
+    <div class="card dashboard-card">
+      <div class="card-head"><h2>Live Dashboard</h2><span id="updated">Updating…</span></div>
+      <div class="stats">
+        <div class="stat"><span>🟢</span><b id="insideCount">0</b><small>Currently Inside</small></div>
+        <div class="stat"><span>📅</span><b id="todayCount">0</b><small>Today's Visitors</small></div>
+        <div class="stat"><span>🔴</span><b id="outCount">0</b><small>Today's Check-outs</small></div>
+      </div>
+      <h3>Currently Inside</h3>
+      <div id="insideList" class="inside-list"></div>
+    </div>
+  </div>
+</section>
+
+<section id="adminLogin" class="page">
+  <div class="center-wrap">
+    <form id="loginForm" class="card login-card">
+      <img src="/logo.png" class="login-logo">
+      <h1>Admin Login</h1>
+      <p>Access visitor history, reports and check-out controls.</p>
+      <label>Username<input id="username" required value="admin"></label>
+      <label>Password<input id="password" type="password" required></label>
+      <button class="btn primary wide">LOGIN</button>
+      <div id="loginMsg" class="message"></div>
+    </form>
+  </div>
+</section>
+
+<section id="admin" class="page">
+  <div class="hero">
+    <div><h1>Admin Panel</h1><p>Visitor history and management</p></div>
+    <div class="top-actions"><button class="btn secondary" onclick="downloadCsv()">Export CSV</button><button class="btn danger" onclick="logout()">Logout</button></div>
+  </div>
+  <div class="card">
+    <div class="filters">
+      <input id="search" placeholder="Search name, mobile, company...">
+      <input id="dateFilter" type="date">
+      <button class="btn primary" onclick="loadHistory()">Search</button>
+      <button class="btn secondary" onclick="clearFilters()">Clear</button>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Photo</th><th>Visitor</th><th>Company</th><th>Meeting With</th><th>IN Time</th><th>OUT Time</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody id="historyBody"></tbody></table>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>© 2026 SAP Semi Pvt Ltd | Visitor Management System | <b>Developed by Nilesh Joshi</b></footer>
+<script src="/app.js"></script>
+</body>
+</html>
