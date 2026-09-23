@@ -1187,4 +1187,35 @@
 
 
   /*
-   * User Dashboar
+    /*
+     User Dashboard
+  */
+
+  if (typeof window.updateUserDashboard === "undefined") {
+    window.updateUserDashboard = function() {
+      return;
+    };
+  }
+
+  if (typeof window.escapeHtml === "undefined") {
+    window.escapeHtml = function(value) {
+      return String(value ?? "").replace(
+        /[&<>"']/g,
+        function(m) {
+          return ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;"
+          })[m];
+        }
+      );
+    };
+  }
+
+})();
+</script>
+
+</body>
+</html>
