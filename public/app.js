@@ -51,7 +51,14 @@ $("loginForm").addEventListener("submit",async e=>{
   try{
     const r=await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:$("username").value,password:$("password").value})});
     const d=await r.json(); if(!r.ok) throw new Error(d.error);
-    token=d.token;localStorage.setItem("sapAdminToken",token);showPage("admin");
+    //token=d.token;localStorage.setItem("sapAdminToken",token);showPage("admin");
+    token = d.token;
+
+localStorage.setItem("sapAdminToken", token);
+localStorage.setItem("sapAdminRole", d.role || "admin");
+localStorage.setItem("sapAdminUsername", d.username || "");
+
+showPage("admin");
   }catch(err){msg($("loginMsg"),err.message)}
 });
 
@@ -83,6 +90,26 @@ async function downloadCsv(){
   const blob=await r.blob(),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="sap-semi-visitors.csv";a.click();
 }
 function clearFilters(){$("search").value="";$("dateFilter").value="";loadHistory()}
-async function logout(){if(token)await fetch("/api/admin/logout",{method:"POST",headers:{"x-admin-token":token}}).catch(()=>{});token="";localStorage.removeItem("sapAdminToken");showPage("adminLogin")}
+//async function logout(){if(token)await fetch("/api/admin/logout",{method:"POST",headers:{"x-admin-token":token}}).catch(()=>{});token="";localStorage.removeItem("sapAdminToken");showPage("adminLogin")}
+
+async function logout(){
+  if(token){
+    await fetch("/api/admin/logout",{
+      method:"POST",
+      headers:{
+        "x-admin-token":token
+      }
+    }).catch(()=>{});
+  }
+
+  token="";
+
+  localStorage.removeItem("sapAdminToken");
+  localStorage.removeItem("sapAdminRole");
+  localStorage.removeItem("sapAdminUsername");
+
+  showPage("adminLogin");
+}
+
 function time(x){return x?new Date(x).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}):"-"}
 function esc(x){return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
