@@ -53,29 +53,245 @@ async function initDb() {
   }
 }
 
-function adminRequired(req, res, next) {
+//function adminRequired(req, res, next) {
+  //const token = req.headers["x-admin-token"];
+  //if (!token || !global.adminTokens?.has(token)) return res.status(401).json({ error: "Admin login required." });
+  //next();
+//}
+//global.adminTokens = new Set();
+
+//global .adminTokens = new Map(); function authRequired(req, res, next) { const token = req.headers; const session = token ? global.adminTokens .get(token) : null; if (!session) { return res .status(401).json({ error: "Login required."}); req.user = session. next(); function adminRequired(req, res, next) { authRequired(req, res, () => { if (req.user.role !== "admin" && req.user.role !== "super_admin") { return res .status(403).json({ error: "Admin access required."}); next(); }); } function superAdminRequired(req, res, next) { authRequired(req, res, () => { if (req.user.role !== "super_admin") { return res .status(403).json({ error: "Super Admin access required."}); next(); });
+
+  global.adminTokens = new Map();
+
+function authRequired(req, res, next) {
   const token = req.headers["x-admin-token"];
-  if (!token || !global.adminTokens?.has(token)) return res.status(401).json({ error: "Admin login required." });
+  const session = token ? global.adminTokens.get(token) : null;
+
+  if (!session) {
+    return res.status(401).json({
+      error: "Login required."
+    });
+  }
+
+  req.user = session;
   next();
 }
-global.adminTokens = new Set();
+
+function adminRequired(req, res, next) {
+  authRequired(req, res, () => {
+    if (
+      req.user.role !== "admin" &&
+      req.user.role !== "super_admin"
+    ) {
+      return res.status(403).json({
+        error: "Admin access required."
+      });
+    }
+
+    next();
+  });
+}
+
+function superAdminRequired(req, res, next) {
+  authRequired(req, res, () => {
+    if (req.user.role !== "super_admin") {
+      return res.status(403).json({
+        error: "Super Admin access required."
+      });
+    }
+
+    next();
+  });
+}
+//app.post("/api/admin/login", async (req, res) => {
+  //try {
+    //const { username, password } = req.body;
+    //const r = await pool.query("SELECT * FROM admins WHERE username=$1", [username]);
+    //if (!r.rows[0] || !(await bcrypt.compare(password || "", r.rows[0].password_hash))) {
+      //return res.status(401).json({ error: "Invalid username or password." });
+    //}
+    //const token = require("crypto").randomBytes(32).toString("hex");
+    //global.adminTokens.add(token);
+    //res.json({ token, username: r.rows[0].username });
+  //} catch (e) { res.status(500).json({ error: "Login failed." }); }
+//});
 
 app.post("/api/admin/login", async (req, res) => {
   try {
     const { username, password } = req.body;
-    const r = await pool.query("SELECT * FROM admins WHERE username=$1", [username]);
-    if (!r.rows[0] || !(await bcrypt.compare(password || "", r.rows[0].password_hash))) {
-      return res.status(401).json({ error: "Invalid username or password." });
+
+    const r = await pool.query(
+      "SELECT id, username, password_hash, role FROM admins WHERE username=$1",
+      [username]
+    );
+
+    if (
+      !r.rows[0] ||
+      !(await bcrypt.compare(password || "", r.rows[0].password_hash))
+    ) {
+      return res.status(401).json({
+        error: "Invalid username or password."
+      });
     }
-    const token = require("crypto").randomBytes(32).toString("hex");
-    global.adminTokens.add(token);
-    res.json({ token, username: r.rows[0].username });
-  } catch (e) { res.status(500).json({ error: "Login failed." }); }
+
+    const user = r.rows[0];
+
+    const token = require("crypto")
+      .randomBytes(32)
+      .toString("hex");
+
+    global.adminTokens.set(token, {
+      id: user.id,
+      username: user.username,
+      role: user.role || "admin"
+    });
+
+    res.json({
+      token,
+      username: user.username,
+      role: user.role || "admin"
+    });
+
+  } catch (e) {
+    console.error("Login error:", e);
+    res.status(500).json({
+      error: "Login failed."
+    });
+  }
+});     
+
+// ===============================
+// SUPER ADMIN - USER MANAGEMENT
+// ===============================
+
+app.get("/api/super-admin/users", superAdminRequired, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT id, username, role, created_at
+      FROM admins
+      ORDER BY created_at DESC
+    `);
+
+    res.json(r.rows);
+  } catch (e) {
+    console.error("Users list error:", e);
+    res.status(500).json({
+      error: "Could not load users."
+    });
+  }
 });
 
+
+app.post("/api/super-admin/users", superAdminRequired, async (req, res) => {
+  try {
+    const {
+      username,
+      password,
+      role
+    } = req.body;
+
+    if (!username || !password || !role) {
+      return res.status(400).json({
+        error: "Username, password and role are required."
+      });
+    }
+
+    if (!["admin", "user"].includes(role)) {
+      return res.status(400).json({
+        error: "Invalid role."
+      });
+    }
+
+    const existing = await pool.query(
+      "SELECT id FROM admins WHERE username=$1",
+      [username.trim()]
+    );
+
+    if (existing.rows.length) {
+      return res.status(400).json({
+        error: "Username already exists."
+      });
+    }
+
+    const hash = await bcrypt.hash(password, 12);
+
+    const r = await pool.query(`
+      INSERT INTO admins(username, password_hash, role)
+      VALUES($1, $2, $3)
+      RETURNING id, username, role, created_at
+    `, [
+      username.trim(),
+      hash,
+      role
+    ]);
+
+    res.status(201).json({
+      message: "User created successfully.",
+      user: r.rows[0]
+    });
+
+  } catch (e) {
+    console.error("Create user error:", e);
+    res.status(500).json({
+      error: "Could not create user."
+    });
+  }
+});
+
+
+app.delete("/api/super-admin/users/:id", superAdminRequired, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({
+        error: "Invalid user ID."
+      });
+    }
+
+    // Prevent Super Admin from deleting himself
+    if (id === req.user.id) {
+      return res.status(400).json({
+        error: "You cannot delete your own account."
+      });
+    }
+
+    const r = await pool.query(
+      "DELETE FROM admins WHERE id=$1 RETURNING id, username",
+      [id]
+    );
+
+    if (!r.rows[0]) {
+      return res.status(404).json({
+        error: "User not found."
+      });
+    }
+
+    res.json({
+      message: "User deleted successfully.",
+      user: r.rows[0]
+    });
+
+  } catch (e) {
+    console.error("Delete user error:", e);
+    res.status(500).json({
+      error: "Could not delete user."
+    });
+  }
+});
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
 app.post("/api/admin/logout", adminRequired, (req, res) => {
   global.adminTokens.delete(req.headers["x-admin-token"]);
   res.json({ ok: true });
+});
+
+app.get("/api/my-role", authRequired, (req, res) => {
+  res.json({
+    id: req.user.id,
+    username: req.user.username,
+    role: req.user.role
+  });
 });
 
 app.get("/api/dashboard", async (_, res) => {
