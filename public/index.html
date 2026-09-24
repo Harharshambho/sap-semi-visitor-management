@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAP Semi Pvt Ltd - Visitor Management</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img src="/logo.png" alt="SAP Semi Pvt Ltd" class="logo" onerror="this.style.display='none'">
+    <div><h1>SAP Semi Pvt Ltd</h1><p>Visitor Management System</p></div>
+  </div>
+  <div class="top-actions">
+    <span id="currentUserInfo"></span>
+    <button id="loginTopBtn" class="btn secondary" onclick="showPage('login')">Login</button>
+    <button id="newVisitorBtn" class="btn primary" style="display:none" onclick="showPage('entry')">New Visitor</button>
+    <button id="logoutBtn" class="btn danger" style="display:none">Logout</button>
+  </div>
+</header>
+
+<main class="container">
+<section id="login" class="page">
+<div class="card narrow">
+<h2>Login</h2><p class="muted">Please login to access Visitor Entry and other sections.</p>
+<form id="loginForm">
+<label>Username</label><input id="loginUsername" type="text" required autocomplete="username">
+<label>Password</label><input id="loginPassword" type="password" required autocomplete="current-password">
+<button class="btn primary full" type="submit">Login</button>
+</form><div id="loginMessage" class="message"></div>
+</div>
+</section>
+
+<section id="entry" class="page">
+<div class="card">
+<div class="section-head"><div><h2>Visitor Entry</h2><p class="muted">Fill visitor details and upload photos.</p></div><span id="entryUserBadge" class="badge"></span></div>
+<form id="visitorForm" enctype="multipart/form-data">
+<div class="grid-2">
+<div><label>Visitor Name *</label><input name="name" required></div>
+<div><label>Mobile Number</label><input name="mobile" type="tel"></div>
+<div><label>Company</label><input name="company"></div>
+<div><label>Person To Meet</label><input name="person_to_meet"></div>
+<div><label>Purpose</label><input name="purpose"></div>
+<div><label>Vehicle Number</label><input name="vehicle_no"></div>
+</div>
+<hr><h3>Photos</h3><p class="muted">Maximum 10 photos total. Each photo up to 5 MB.</p>
+<div class="photo-grid">
+<div class="photo-field required"><label>Visitor Photo *</label><input name="visitor_photo" type="file" accept="image/*" capture="user" required></div>
+<div class="photo-field"><label>Vehicle Photo</label><input name="vehicle_photo" type="file" accept="image/*" capture="environment"></div>
+<div class="photo-field"><label>Invoice Photo</label><input name="invoice_photo" type="file" accept="image/*" capture="environment"></div>
+<div class="photo-field"><label>ID Proof</label><input name="id_photo" type="file" accept="image/*" capture="environment"></div>
+<div class="photo-field"><label>Material Photo</label><input name="material_photo" type="file" accept="image/*" capture="environment"></div>
+<div class="photo-field"><label>Other Document</label><input name="document_photo" type="file" accept="image/*" capture="environment"></div>
+<div class="photo-field"><label>Other Photos</label><input name="other_photos" type="file" accept="image/*" capture="environment" multiple></div>
+</div>
+<div id="photoPreview" class="photo-preview"></div>
+<button id="submitVisitorBtn" class="btn primary full" type="submit">Submit Visitor Entry</button>
+<div id="visitorMessage" class="message"></div>
+</form>
+</div>
+</section>
+
+<section id="admin" class="page"><div class="card">
+<div class="section-head"><div><h2>Admin Dashboard</h2><p class="muted">Visitor list, IN/OUT status and photos.</p></div>
+<div class="actions"><button id="refreshDashboardBtn" class="btn secondary">Refresh</button><button id="historyBtn" class="btn secondary">History</button><button id="downloadCsvBtn" class="btn primary">Download CSV</button></div></div>
+<div id="dashboardStats" class="stats"></div><div id="dashboardTable" class="table-wrap"></div>
+</div></section>
+
+<section id="history" class="page"><div class="card">
+<div class="section-head"><div><h2>Visitor History</h2><p class="muted">All visitor entries with creator information.</p></div><button id="historyRefreshBtn" class="btn secondary">Refresh</button></div>
+<div id="historyTable" class="table-wrap"></div>
+</div></section>
+
+<section id="userPanel" class="page"><div class="card">
+<div class="section-head"><div><h2>User Dashboard</h2><p class="muted">Today's visitor IN/OUT status.</p></div><button id="userRefreshBtn" class="btn secondary">Refresh</button></div>
+<div id="userStats" class="stats"></div><div id="userTable" class="table-wrap"></div>
+</div></section>
+
+<section id="superAdmin" class="page"><div class="card">
+<div class="section-head"><div><h2>Super Admin</h2><p class="muted">Create and manage Admin / User accounts.</p></div><button id="usersRefreshBtn" class="btn secondary">Refresh</button></div>
+<form id="createUserForm" class="grid-2">
+<div><label>Username *</label><input name="username" required></div>
+<div><label>Password *</label><input name="password" type="password" minlength="4" required></div>
+<div><label>Role *</label><select name="role"><option value="user">User</option><option value="admin">Admin</option><option value="super_admin">Super Admin</option></select></div>
+<div class="align-end"><button class="btn primary" type="submit">Create User</button></div>
+</form>
+<div id="userManageMessage" class="message"></div><div id="usersTable" class="table-wrap"></div>
+</div></section>
+</main>
+<footer>Website developed by Nilesh Joshi</footer>
+
+<script>
+window.showPage=function(id){
+  const protectedPages=["entry","admin","history","userPanel","superAdmin"];
+  if(protectedPages.includes(id)&&!localStorage.getItem("sapAdminToken")) id="login";
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  const el=document.getElementById(id);if(el)el.classList.add("active");
+};
+document.addEventListener("DOMContentLoaded",()=>{if(!localStorage.getItem("sapAdminToken"))showPage("login");});
+</script>
+<script src="/app.js"></script>
+</body>
+</html>
