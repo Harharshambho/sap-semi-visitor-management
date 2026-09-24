@@ -233,9 +233,12 @@ app.use((err,req,res,next)=>{
   next();
 });
 
-app.get("*",(req,res)=>{
-  if(req.path.startsWith("/api/"))return res.status(404).json({error:"API route not found."});
-  res.sendFile(path.join(__dirname,"public","index.html"));
+app.use((req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "API route not found." });
+  }
+
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 initDb().then(()=>app.listen(PORT,"0.0.0.0",()=>console.log(`SAP Semi Visitor Management running on port ${PORT}`)))
