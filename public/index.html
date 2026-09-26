@@ -1,219 +1,1623 @@
 <!doctype html>
 <html lang="en">
+
 <head>
+
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SAP Semi Pvt Ltd | Visitor Management</title>
-<link rel="stylesheet" href="/styles.css">
+
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
+
+<title>
+SAP Semi Pvt Ltd | Visitor Management
+</title>
+
+<link
+  rel="stylesheet"
+  href="/styles.css"
+>
+
+<style>
+
+.photo-modal,
+.photo-gallery-modal {
+
+  display:none;
+
+  position:fixed;
+
+  z-index:9999;
+
+  inset:0;
+
+  background:rgba(0,0,0,.82);
+
+  align-items:center;
+
+  justify-content:center;
+
+  padding:20px;
+
+}
+
+.photo-modal-content {
+
+  position:relative;
+
+  max-width:95vw;
+
+  max-height:95vh;
+
+  text-align:center;
+
+}
+
+.photo-modal-content img {
+
+  max-width:90vw;
+
+  max-height:80vh;
+
+  object-fit:contain;
+
+  border-radius:12px;
+
+  background:white;
+
+}
+
+.photo-modal-close {
+
+  position:absolute;
+
+  right:-10px;
+
+  top:-45px;
+
+  width:38px;
+
+  height:38px;
+
+  border:0;
+
+  border-radius:50%;
+
+  background:white;
+
+  color:#111;
+
+  font-size:24px;
+
+  cursor:pointer;
+
+}
+
+.photo-modal-title {
+
+  color:white;
+
+  margin-top:12px;
+
+  font-size:15px;
+
+}
+
+.photo-gallery-content {
+
+  background:white;
+
+  border-radius:15px;
+
+  padding:20px;
+
+  max-width:900px;
+
+  max-height:90vh;
+
+  overflow:auto;
+
+  width:100%;
+
+}
+
+.photo-gallery-head {
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:space-between;
+
+  margin-bottom:20px;
+
+}
+
+.photo-gallery-grid {
+
+  display:grid;
+
+  grid-template-columns:
+    repeat(auto-fill,minmax(150px,1fr));
+
+  gap:15px;
+
+}
+
+.close-gallery {
+
+  border:0;
+
+  background:#f2f4f7;
+
+  border-radius:8px;
+
+  width:38px;
+
+  height:38px;
+
+  font-size:22px;
+
+  cursor:pointer;
+
+}
+
+</style>
+
 </head>
+
+
 <body>
+
+
 <header class="topbar">
+
   <div class="brand">
-    <img src="/logo.png" alt="SAP Semi logo">
-    <div><strong>SAP Semi Pvt Ltd</strong><span>Visitor Management System</span></div>
+
+    <img
+      src="/logo.png"
+      alt="SAP Semi logo"
+    >
+
+    <div>
+
+      <strong>
+        SAP Semi Pvt Ltd
+      </strong>
+
+      <span>
+        Visitor Management System
+      </span>
+
+    </div>
+
   </div>
+
+
   <div class="top-actions">
-    <button id="newVisitorBtn" class="btn secondary" onclick="showPage('entry')">+ New Visitor</button>
-    <button class="btn" onclick="showPage('adminLogin')">Login</button>
+
+    <button
+      id="newVisitorBtn"
+      class="btn secondary"
+      onclick="showPage('entry')"
+    >
+      + New Visitor
+    </button>
+
+    <button
+      class="btn"
+      onclick="showPage('adminLogin')"
+    >
+      Login
+    </button>
+
   </div>
+
 </header>
 
+
 <main>
-<section id="entry" class="page">
+
+
+<!-- ================= ENTRY ================= -->
+
+<section
+  id="entry"
+  class="page"
+>
+
   <div class="hero">
-    <div><h1>Visitor Check-In</h1><p>Register every visitor before entry. <b>Visitor photo is mandatory.</b></p></div>
-    <div class="live-dot"><i></i> Live Dashboard</div>
+
+    <div>
+
+      <h1>
+        Visitor Check-In
+      </h1>
+
+      <p>
+        Register every visitor before entry.
+        <b>
+          Visitor photo is mandatory.
+        </b>
+      </p>
+
+    </div>
+
+    <div class="live-dot">
+
+      <i></i>
+      Live Dashboard
+
+    </div>
+
   </div>
 
+
   <div class="grid-2">
-    <form id="visitorForm" class="card form-card">
-      <h2>Visitor Details</h2>
+
+
+    <form
+      id="visitorForm"
+      class="card form-card"
+    >
+
+      <h2>
+        Visitor Details
+      </h2>
+
+
       <div class="fields">
-        <label>Visitor Name *<input name="name" required placeholder="Enter full name"></label>
-        <label>Mobile Number *<input name="mobile" required inputmode="tel" placeholder="10 digit mobile number"></label>
-        <label>Company / Firm<input name="company" placeholder="Company name"></label>
-        <label>Person to Meet *<input name="person_to_meet" required placeholder="Employee / department"></label>
-        <label>Purpose of Visit *<input name="purpose" required placeholder="Meeting, delivery, interview..."></label>
-        <label>Vehicle Number<input name="vehicle_no" placeholder="MH12AB1234"></label>
+
+        <label>
+          Visitor Name *
+
+          <input
+            name="name"
+            required
+            placeholder="Enter full name"
+          >
+
+        </label>
+
+
+        <label>
+          Mobile Number *
+
+          <input
+            name="mobile"
+            required
+            inputmode="tel"
+            placeholder="10 digit mobile number"
+          >
+
+        </label>
+
+
+        <label>
+          Company / Firm
+
+          <input
+            name="company"
+            placeholder="Company name"
+          >
+
+        </label>
+
+
+        <label>
+          Person to Meet *
+
+          <input
+            name="person_to_meet"
+            required
+            placeholder="Employee / department"
+          >
+
+        </label>
+
+
+        <label>
+          Purpose of Visit *
+
+          <input
+            name="purpose"
+            required
+            placeholder="Meeting, delivery, interview..."
+          >
+
+        </label>
+
+
+        <label>
+          Vehicle Number
+
+          <input
+            name="vehicle_no"
+            placeholder="MH12AB1234"
+          >
+
+        </label>
+
       </div>
 
-      <div class="card" style="margin-top:18px;padding:16px;background:#f8fafc;">
-        <h3 style="margin-top:0;">Visitor Photos</h3>
-        <p style="color:#667085;font-size:13px;">You can take/select up to 10 photos. Each photo can be up to 5 MB.</p>
+
+      <div
+        class="card"
+        style="
+          margin-top:18px;
+          padding:16px;
+          background:#f8fafc;
+        "
+      >
+
+        <h3 style="margin-top:0;">
+          Visitor Photos
+        </h3>
+
+
+        <p
+          style="
+            color:#667085;
+            font-size:13px;
+          "
+        >
+          You can take/select up to 10 photos.
+          Each photo can be up to 5 MB.
+        </p>
+
 
         <div class="fields">
-          <label>👤 Visitor Photo *<input id="visitor_photo" type="file" name="visitor_photo" accept="image/*" capture="user" required></label>
-          <label>🚗 Vehicle Photo<input type="file" name="vehicle_photo" accept="image/*" capture="environment"></label>
-          <label>🧾 Invoice Photo<input type="file" name="invoice_photo" accept="image/*" capture="environment"></label>
-          <label>🪪 ID Proof Photo<input type="file" name="id_photo" accept="image/*" capture="environment"></label>
-          <label>📦 Material Photo<input type="file" name="material_photo" accept="image/*" capture="environment"></label>
-          <label>📄 Other Document<input type="file" name="document_photo" accept="image/*" capture="environment"></label>
-          <label>📷 Other Photos (up to 5)<input type="file" name="other_photos" accept="image/*" capture="environment" multiple></label>
+
+
+          <label>
+            👤 Visitor Photo *
+
+            <input
+              id="visitor_photo"
+              type="file"
+              name="visitor_photo"
+              accept="image/jpeg,image/png,image/gif"
+              capture="user"
+              required
+            >
+
+          </label>
+
+
+          <label>
+            🚗 Vehicle Photo
+
+            <input
+              type="file"
+              name="vehicle_photo"
+              accept="image/jpeg,image/png,image/gif"
+              capture="environment"
+            >
+
+          </label>
+
+
+          <label>
+            🧾 Invoice Photo
+
+            <input
+              type="file"
+              name="invoice_photo"
+              accept="image/jpeg,image/png,image/gif"
+              capture="environment"
+            >
+
+          </label>
+
+
+          <label>
+            🪪 ID Proof Photo
+
+            <input
+              type="file"
+              name="id_photo"
+              accept="image/jpeg,image/png,image/gif"
+              capture="environment"
+            >
+
+          </label>
+
+
+          <label>
+            📦 Material Photo
+
+            <input
+              type="file"
+              name="material_photo"
+              accept="image/jpeg,image/png,image/gif"
+              capture="environment"
+            >
+
+          </label>
+
+
+          <label>
+            📄 Other Document
+
+            <input
+              type="file"
+              name="document_photo"
+              accept="image/jpeg,image/png,image/gif"
+              capture="environment"
+            >
+
+          </label>
+
+
+          <label>
+            📷 Other Photos (up to 5)
+
+            <input
+              type="file"
+              name="other_photos"
+              accept="image/jpeg,image/png,image/gif"
+              capture="environment"
+              multiple
+            >
+
+          </label>
+
+
         </div>
 
-        <div id="photoPreviewGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:10px;margin-top:14px;"></div>
-        <small style="color:#667085;">Visitor Photo is compulsory. Total maximum: 10 photos.</small>
+
+        <div
+          id="photoPreviewGrid"
+          style="
+            display:grid;
+            grid-template-columns:
+              repeat(auto-fill,minmax(100px,1fr));
+            gap:10px;
+            margin-top:14px;
+          "
+        ></div>
+
+
+        <small style="color:#667085;">
+          Visitor Photo is compulsory.
+          Total maximum: 10 photos.
+        </small>
+
       </div>
 
-      <button class="btn primary wide" type="submit">CHECK IN VISITOR</button>
-      <div id="formMsg" class="message"></div>
+
+      <button
+        class="btn primary wide"
+        type="submit"
+      >
+        CHECK IN VISITOR
+      </button>
+
+
+      <div
+        id="formMsg"
+        class="message"
+      ></div>
+
     </form>
+
+
+    <!-- DASHBOARD -->
 
     <div class="card dashboard-card">
-      <div class="card-head"><h2>Live Dashboard</h2><span id="updated">Login required</span></div>
+
+      <div class="card-head">
+
+        <h2>
+          Live Dashboard
+        </h2>
+
+        <span id="updated">
+          Login required
+        </span>
+
+      </div>
+
+
       <div class="stats">
-        <div class="stat"><span>🟢</span><b id="insideCount">0</b><small>Currently Inside</small></div>
-        <div class="stat"><span>📅</span><b id="todayCount">0</b><small>Today's Visitors</small></div>
-        <div class="stat"><span>🔴</span><b id="outCount">0</b><small>Today's Check-outs</small></div>
+
+        <div class="stat">
+
+          <span>🟢</span>
+
+          <b id="insideCount">
+            0
+          </b>
+
+          <small>
+            Currently Inside
+          </small>
+
+        </div>
+
+
+        <div class="stat">
+
+          <span>📅</span>
+
+          <b id="todayCount">
+            0
+          </b>
+
+          <small>
+            Today's Visitors
+          </small>
+
+        </div>
+
+
+        <div class="stat">
+
+          <span>🔴</span>
+
+          <b id="outCount">
+            0
+          </b>
+
+          <small>
+            Today's Check-outs
+          </small>
+
+        </div>
+
       </div>
-      <h3>Currently Inside</h3>
-      <div id="insideList" class="inside-list"></div>
+
+
+      <h3>
+        Currently Inside
+      </h3>
+
+
+      <div
+        id="insideList"
+        class="inside-list"
+      ></div>
+
     </div>
+
   </div>
+
 </section>
 
-<section id="adminLogin" class="page">
+
+<!-- ================= LOGIN ================= -->
+
+<section
+  id="adminLogin"
+  class="page"
+>
+
   <div class="center-wrap">
-    <form id="loginForm" class="card login-card">
-      <img src="/logo.png" class="login-logo" alt="SAP Semi logo">
-      <h1>Login</h1><p>Login according to your assigned role.</p>
-      <label>Username<input id="username" required value="admin" autocomplete="username"></label>
-      <label>Password<input id="password" type="password" required autocomplete="current-password"></label>
-      <button class="btn primary wide" type="submit">LOGIN</button>
-      <div id="loginMsg" class="message"></div>
+
+    <form
+      id="loginForm"
+      class="card login-card"
+    >
+
+      <img
+        src="/logo.png"
+        class="login-logo"
+        alt="SAP Semi logo"
+      >
+
+
+      <h1>
+        Login
+      </h1>
+
+
+      <p>
+        Login according to your assigned role.
+      </p>
+
+
+      <label>
+        Username
+
+        <input
+          id="username"
+          required
+          value="admin"
+          autocomplete="username"
+        >
+
+      </label>
+
+
+      <label>
+        Password
+
+        <input
+          id="password"
+          type="password"
+          required
+          autocomplete="current-password"
+        >
+
+      </label>
+
+
+      <button
+        class="btn primary wide"
+        type="submit"
+      >
+        LOGIN
+      </button>
+
+
+      <div
+        id="loginMsg"
+        class="message"
+      ></div>
+
     </form>
+
   </div>
+
 </section>
 
-<section id="admin" class="page">
+
+<!-- ================= ADMIN ================= -->
+
+<section
+  id="admin"
+  class="page"
+>
+
   <div class="hero">
-    <div><h1 id="panelTitle">Admin Panel</h1><p id="panelSubtitle">Visitor history and management</p><div id="loggedUserInfo" style="margin-top:8px;font-size:13px;color:#667085;"></div></div>
-    <div class="top-actions"><button id="exportBtn" class="btn secondary" onclick="downloadCsv()">Export CSV</button><button class="btn secondary" onclick="showPage('entry')">+ New Visitor</button><button class="btn danger" onclick="logout()">Logout</button></div>
+
+    <div>
+
+      <h1 id="panelTitle">
+        Admin Panel
+      </h1>
+
+      <p id="panelSubtitle">
+        Visitor history and management
+      </p>
+
+      <div
+        id="loggedUserInfo"
+        style="
+          margin-top:8px;
+          font-size:13px;
+          color:#667085;
+        "
+      ></div>
+
+    </div>
+
+
+    <div class="top-actions">
+
+      <button
+        id="exportBtn"
+        class="btn secondary"
+        onclick="downloadExcel()"
+      >
+        📥 Export Excel
+      </button>
+
+
+      <button
+        class="btn secondary"
+        onclick="showPage('entry')"
+      >
+        + New Visitor
+      </button>
+
+
+      <button
+        class="btn danger"
+        onclick="logout()"
+      >
+        Logout
+      </button>
+
+    </div>
+
   </div>
 
-  <div id="superAdminPanel" style="display:none;">
+
+  <!-- SUPER ADMIN -->
+
+  <div
+    id="superAdminPanel"
+    style="display:none;"
+  >
+
     <div class="card">
-      <h2>Super Admin Control</h2><p style="color:#667085;">Manage Admin and User accounts.</p>
+
+      <h2>
+        Super Admin Control
+      </h2>
+
+      <p style="color:#667085;">
+        Manage Admin and User accounts.
+      </p>
+
+
       <div class="fields">
-        <label>Username<input id="newUsername" placeholder="Enter username"></label>
-        <label>Password<input id="newPassword" type="password" placeholder="Enter password"></label>
-        <label>Role<select id="newRole"><option value="user">User</option><option value="admin">Admin</option></select></label>
+
+        <label>
+          Username
+
+          <input
+            id="newUsername"
+            placeholder="Enter username"
+          >
+
+        </label>
+
+
+        <label>
+          Password
+
+          <input
+            id="newPassword"
+            type="password"
+            placeholder="Enter password"
+          >
+
+        </label>
+
+
+        <label>
+          Role
+
+          <select id="newRole">
+
+            <option value="user">
+              User
+            </option>
+
+            <option value="admin">
+              Admin
+            </option>
+
+          </select>
+
+        </label>
+
       </div>
-      <button class="btn primary" style="margin-top:16px;" onclick="createSystemUser()">+ CREATE USER / ADMIN</button>
-      <div id="userManagementMsg" class="message"></div>
+
+
+      <button
+        class="btn primary"
+        style="margin-top:16px;"
+        onclick="createSystemUser()"
+      >
+        + CREATE USER / ADMIN
+      </button>
+
+
+      <div
+        id="userManagementMsg"
+        class="message"
+      ></div>
+
     </div>
-    <div class="card" style="margin-top:20px;">
-      <div class="card-head"><h2>System Users</h2><button class="btn secondary" onclick="loadSystemUsers()">Refresh</button></div>
-      <div class="table-wrap"><table><thead><tr><th>ID</th><th>Username</th><th>Role</th><th>Created</th><th>Action</th></tr></thead><tbody id="systemUsersBody"></tbody></table></div>
+
+
+    <div
+      class="card"
+      style="margin-top:20px;"
+    >
+
+      <div class="card-head">
+
+        <h2>
+          System Users
+        </h2>
+
+        <button
+          class="btn secondary"
+          onclick="loadSystemUsers()"
+        >
+          Refresh
+        </button>
+
+      </div>
+
+
+      <div class="table-wrap">
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>ID</th>
+
+              <th>Username</th>
+
+              <th>Role</th>
+
+              <th>Created</th>
+
+              <th>Action</th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody
+            id="systemUsersBody"
+          ></tbody>
+
+        </table>
+
+      </div>
+
     </div>
+
   </div>
 
-  <div class="card" id="visitorHistoryPanel" style="margin-top:20px;">
+
+  <!-- HISTORY -->
+
+  <div
+    class="card"
+    id="visitorHistoryPanel"
+    style="margin-top:20px;"
+  >
+
     <div class="filters">
-      <input id="search" placeholder="Search visitor, company, creator...">
-      <input id="dateFilter" type="date">
-      <button class="btn primary" onclick="loadHistory()">Search</button>
-      <button class="btn secondary" onclick="clearFilters()">Clear</button>
+
+      <input
+        id="search"
+        placeholder="Search visitor, company, creator..."
+      >
+
+
+      <input
+        id="dateFilter"
+        type="date"
+      >
+
+
+      <button
+        class="btn primary"
+        onclick="loadHistory()"
+      >
+        Search
+      </button>
+
+
+      <button
+        class="btn secondary"
+        onclick="clearFilters()"
+      >
+        Clear
+      </button>
+
     </div>
+
+
     <div class="table-wrap">
-      <table><thead><tr><th>Photo</th><th>Visitor</th><th>Company</th><th>Meeting With</th><th>IN Time</th><th>OUT Time</th><th>Created By</th><th>Status</th><th>Action</th></tr></thead><tbody id="historyBody"></tbody></table>
+
+      <table>
+
+        <thead>
+
+          <tr>
+
+            <th>
+              Photo
+            </th>
+
+            <th>
+              Visitor
+            </th>
+
+            <th>
+              Company
+            </th>
+
+            <th>
+              Meeting With
+            </th>
+
+            <th>
+              IN Time
+            </th>
+
+            <th>
+              OUT Time
+            </th>
+
+            <th>
+              Registered By
+            </th>
+
+            <th>
+              Status
+            </th>
+
+            <th>
+              Action
+            </th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody
+          id="historyBody"
+        ></tbody>
+
+      </table>
+
     </div>
+
   </div>
+
 </section>
 
-<section id="userPanel" class="page">
+
+<!-- ================= USER ================= -->
+
+<section
+  id="userPanel"
+  class="page"
+>
+
   <div class="hero">
-    <div><h1>User Dashboard</h1><p>Visitor entry and today's visitor status</p><div id="userLoggedInfo" style="margin-top:8px;font-size:13px;color:#667085;"></div></div>
-    <div class="top-actions"><button class="btn secondary" onclick="showPage('entry')">+ New Visitor</button><button class="btn danger" onclick="logout()">Logout</button></div>
+
+    <div>
+
+      <h1>
+        User Dashboard
+      </h1>
+
+      <p>
+        Visitor entry and today's visitor status
+      </p>
+
+      <div
+        id="userLoggedInfo"
+        style="
+          margin-top:8px;
+          font-size:13px;
+          color:#667085;
+        "
+      ></div>
+
+    </div>
+
+
+    <div class="top-actions">
+
+      <button
+        class="btn secondary"
+        onclick="showPage('entry')"
+      >
+        + New Visitor
+      </button>
+
+
+      <button
+        class="btn danger"
+        onclick="logout()"
+      >
+        Logout
+      </button>
+
+    </div>
+
   </div>
+
+
   <div class="grid-2">
-    <div class="card"><h2>Visitor Entry</h2><p style="color:#667085;">Register a visitor using the New Visitor button.</p><button class="btn primary" onclick="showPage('entry')">+ REGISTER VISITOR</button></div>
-    <div class="card dashboard-card"><div class="card-head"><h2>Today's Status</h2><span id="userDashUpdated">Updating...</span></div><div class="stats"><div class="stat"><span>🟢</span><b id="userInsideCount">0</b><small>Inside</small></div><div class="stat"><span>📅</span><b id="userTodayCount">0</b><small>Today's Visitors</small></div><div class="stat"><span>🔴</span><b id="userOutCount">0</b><small>Check-outs</small></div></div><h3>Currently Inside</h3><div id="userInsideList" class="inside-list"></div></div>
+
+
+    <div class="card">
+
+      <h2>
+        Visitor Entry
+      </h2>
+
+      <p style="color:#667085;">
+        Register a visitor using the New Visitor button.
+      </p>
+
+
+      <button
+        class="btn primary"
+        onclick="showPage('entry')"
+      >
+        + REGISTER VISITOR
+      </button>
+
+    </div>
+
+
+    <div
+      class="card dashboard-card"
+    >
+
+      <div class="card-head">
+
+        <h2>
+          Today's Status
+        </h2>
+
+        <span id="userDashUpdated">
+          Updating...
+        </span>
+
+      </div>
+
+
+      <div class="stats">
+
+        <div class="stat">
+
+          <span>🟢</span>
+
+          <b id="userInsideCount">
+            0
+          </b>
+
+          <small>
+            Inside
+          </small>
+
+        </div>
+
+
+        <div class="stat">
+
+          <span>📅</span>
+
+          <b id="userTodayCount">
+            0
+          </b>
+
+          <small>
+            Today's Visitors
+          </small>
+
+        </div>
+
+
+        <div class="stat">
+
+          <span>🔴</span>
+
+          <b id="userOutCount">
+            0
+          </b>
+
+          <small>
+            Check-outs
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <h3>
+        Currently Inside
+      </h3>
+
+
+      <div
+        id="userInsideList"
+        class="inside-list"
+      ></div>
+
+    </div>
+
   </div>
+
 </section>
+
+
 </main>
 
-<footer style="text-align:center;padding:25px;color:#667085;font-size:13px;">Developed by Nilesh Joshi</footer>
+
+<footer
+  style="
+    text-align:center;
+    padding:25px;
+    color:#667085;
+    font-size:13px;
+  "
+>
+  SAP Semi Pvt Ltd |
+  Website developed by Nilesh Joshi
+</footer>
+
+
+<!-- ================= PHOTO GALLERY MODAL ================= -->
+
+<div
+  id="photoGalleryModal"
+  class="photo-gallery-modal"
+  onclick="if(event.target===this)closePhotoGallery()"
+>
+
+  <div class="photo-gallery-content">
+
+    <div class="photo-gallery-head">
+
+      <h2 style="margin:0;">
+        Visitor Photos
+      </h2>
+
+      <button
+        class="close-gallery"
+        onclick="closePhotoGallery()"
+      >
+        ×
+      </button>
+
+    </div>
+
+
+    <div
+      id="modalPhotoGrid"
+      class="photo-gallery-grid"
+    ></div>
+
+  </div>
+
+</div>
+
+
+<!-- ================= SINGLE PHOTO MODAL ================= -->
+
+<div
+  id="photoModal"
+  class="photo-modal"
+  onclick="if(event.target===this)closePhotoModal()"
+>
+
+  <div class="photo-modal-content">
+
+    <button
+      class="photo-modal-close"
+      onclick="closePhotoModal()"
+    >
+      ×
+    </button>
+
+
+    <img
+      id="modalPhoto"
+      src=""
+      alt="Visitor Photo"
+    >
+
+
+    <div
+      id="photoModalTitle"
+      class="photo-modal-title"
+    ></div>
+
+  </div>
+
+</div>
+
 
 <script src="/app.js"></script>
-<script>
-(function(){
-  const oldShowPage = window.showPage;
 
-  function token(){ return localStorage.getItem("sapAdminToken") || ""; }
-  function role(){ return localStorage.getItem("sapAdminRole") || ""; }
-  function username(){ return localStorage.getItem("sapAdminUsername") || ""; }
+
+<script>
+
+(function(){
+
+  const oldShowPage =
+    window.showPage;
+
+
+  function tokenValue(){
+
+    return localStorage.getItem(
+      "sapAdminToken"
+    ) || "";
+
+  }
+
+
+  function role(){
+
+    return localStorage.getItem(
+      "sapAdminRole"
+    ) || "";
+
+  }
+
+
+  function username(){
+
+    return localStorage.getItem(
+      "sapAdminUsername"
+    ) || "";
+
+  }
+
 
   function loginPage(){
-    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-    document.getElementById("adminLogin")?.classList.add("active");
-    document.getElementById("newVisitorBtn")?.style.setProperty("display","none");
+
+    document
+      .querySelectorAll(".page")
+      .forEach(
+        p =>
+          p.classList.remove("active")
+      );
+
+    document
+      .getElementById("adminLogin")
+      ?.classList.add("active");
+
+    document
+      .getElementById("newVisitorBtn")
+      ?.style.setProperty(
+        "display",
+        "none"
+      );
+
   }
+
 
   function entryPage(){
-    if(!token()){ loginPage(); return; }
-    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-    document.getElementById("entry")?.classList.add("active");
-    document.getElementById("newVisitorBtn")?.style.setProperty("display","inline-block");
-    if(typeof loadDashboard==="function") loadDashboard();
+
+    if (!tokenValue()) {
+
+      loginPage();
+
+      return;
+    }
+
+    document
+      .querySelectorAll(".page")
+      .forEach(
+        p =>
+          p.classList.remove("active")
+      );
+
+    document
+      .getElementById("entry")
+      ?.classList.add("active");
+
+    document
+      .getElementById("newVisitorBtn")
+      ?.style.setProperty(
+        "display",
+        "inline-block"
+      );
+
+    if (
+      typeof loadDashboard ===
+      "function"
+    ) {
+
+      loadDashboard();
+
+    }
+
   }
 
-  window.showPage = function(id){
-    if(id==="adminLogin"){ loginPage(); return; }
-    if(id==="entry"){ entryPage(); return; }
 
-    if(id==="admin"){
-      if(!token()){ loginPage(); return; }
-      if(role()==="user"){ id="userPanel"; }
+  window.showPage =
+    function(id){
+
+      if (
+        id === "adminLogin"
+      ) {
+
+        loginPage();
+
+        return;
+      }
+
+
+      if (
+        id === "entry"
+      ) {
+
+        entryPage();
+
+        return;
+      }
+
+
+      if (
+        id === "admin"
+      ) {
+
+        if (!tokenValue()) {
+
+          loginPage();
+
+          return;
+        }
+
+
+        if (
+          role() === "user"
+        ) {
+
+          id = "userPanel";
+
+        }
+
+      }
+
+
+      if (
+        id === "userPanel"
+      ) {
+
+        if (!tokenValue()) {
+
+          loginPage();
+
+          return;
+        }
+
+
+        if (
+          role() !== "user"
+        ) {
+
+          id = "admin";
+
+        }
+
+      }
+
+
+      if (
+        id === "admin"
+      ) {
+
+        document
+          .querySelectorAll(".page")
+          .forEach(
+            p =>
+              p.classList.remove(
+                "active"
+              )
+          );
+
+        document
+          .getElementById("admin")
+          ?.classList.add("active");
+
+
+        document
+          .getElementById("newVisitorBtn")
+          ?.style.setProperty(
+            "display",
+            "inline-block"
+          );
+
+
+        const isSuper =
+          role() === "super_admin";
+
+
+        document
+          .getElementById(
+            "panelTitle"
+          )
+          .textContent =
+          isSuper
+            ? "Super Admin Panel"
+            : "Admin Panel";
+
+
+        document
+          .getElementById(
+            "panelSubtitle"
+          )
+          .textContent =
+          isSuper
+            ? "Full system control and visitor management"
+            : "Visitor history, reports and check-out";
+
+
+        document
+          .getElementById(
+            "loggedUserInfo"
+          )
+          .textContent =
+          `Logged in as: ${username()} | Role: ${
+            isSuper
+              ? "Super Admin"
+              : "Admin"
+          }`;
+
+
+        document
+          .getElementById(
+            "superAdminPanel"
+          )
+          .style.display =
+          isSuper
+            ? "block"
+            : "none";
+
+
+        if (
+          typeof loadHistory ===
+          "function"
+        ) {
+
+          loadHistory();
+
+        }
+
+
+        if (
+          isSuper &&
+          typeof loadSystemUsers ===
+          "function"
+        ) {
+
+          loadSystemUsers();
+
+        }
+
+        return;
+      }
+
+
+      if (
+        id === "userPanel"
+      ) {
+
+        document
+          .querySelectorAll(".page")
+          .forEach(
+            p =>
+              p.classList.remove(
+                "active"
+              )
+          );
+
+        document
+          .getElementById("userPanel")
+          ?.classList.add("active");
+
+
+        document
+          .getElementById(
+            "userLoggedInfo"
+          )
+          .textContent =
+          `Logged in as: ${username()} | Role: User`;
+
+
+        if (
+          typeof updateUserDashboard ===
+          "function"
+        ) {
+
+          updateUserDashboard();
+
+        }
+
+        return;
+      }
+
+
+      if (
+        typeof oldShowPage ===
+        "function"
+      ) {
+
+        oldShowPage(id);
+
+      }
+
+    };
+
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    async () => {
+
+      if (!tokenValue()) {
+
+        loginPage();
+
+        return;
+      }
+
+
+      try {
+
+        const r =
+          await fetch(
+            "/api/my-role",
+            {
+              headers: {
+                "x-admin-token":
+                  tokenValue()
+              }
+            }
+          );
+
+
+        if (!r.ok) {
+
+          throw new Error();
+
+        }
+
+
+        const u =
+          await r.json();
+
+
+        localStorage.setItem(
+          "sapAdminRole",
+          u.role || ""
+        );
+
+
+        localStorage.setItem(
+          "sapAdminUsername",
+          u.username || ""
+        );
+
+
+        localStorage.setItem(
+          "sapCurrentUserId",
+          u.id || ""
+        );
+
+
+        showPage(
+          u.role === "user"
+            ? "userPanel"
+            : "admin"
+        );
+
+
+      } catch(e) {
+
+        localStorage.removeItem(
+          "sapAdminToken"
+        );
+
+        localStorage.removeItem(
+          "sapAdminRole"
+        );
+
+        localStorage.removeItem(
+          "sapAdminUsername"
+        );
+
+        localStorage.removeItem(
+          "sapCurrentUserId"
+        );
+
+        loginPage();
+
+      }
+
     }
+  );
 
-    if(id==="userPanel"){
-      if(!token()){ loginPage(); return; }
-      if(role()!=="user"){ id="admin"; }
-    }
-
-    if(id==="admin"){
-      document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-      document.getElementById("admin")?.classList.add("active");
-      document.getElementById("newVisitorBtn")?.style.setProperty("display","inline-block");
-      const isSuper=role()==="super_admin";
-      document.getElementById("panelTitle").textContent=isSuper?"Super Admin Panel":"Admin Panel";
-      document.getElementById("panelSubtitle").textContent=isSuper?"Full system control and visitor management":"Visitor history, reports and check-out";
-      document.getElementById("loggedUserInfo").textContent=`Logged in as: ${username()} | Role: ${isSuper?"Super Admin":"Admin"}`;
-      document.getElementById("superAdminPanel").style.display=isSuper?"block":"none";
-      if(typeof loadHistory==="function") loadHistory();
-      if(isSuper && typeof loadSystemUsers==="function") loadSystemUsers();
-      return;
-    }
-
-    if(id==="userPanel"){
-      document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-      document.getElementById("userPanel")?.classList.add("active");
-      document.getElementById("userLoggedInfo").textContent=`Logged in as: ${username()} | Role: User`;
-      if(typeof updateUserDashboard==="function") updateUserDashboard();
-      return;
-    }
-
-    if(typeof oldShowPage==="function") oldShowPage(id);
-  };
-
-  document.addEventListener("DOMContentLoaded", async ()=>{
-    if(!token()){ loginPage(); return; }
-    try{
-      const r=await fetch("/api/my-role",{headers:{"x-admin-token":token()}});
-      if(!r.ok) throw new Error();
-      const u=await r.json();
-      localStorage.setItem("sapAdminRole",u.role||"");
-      localStorage.setItem("sapAdminUsername",u.username||"");
-      showPage(u.role==="user"?"userPanel":"admin");
-    }catch(e){
-      localStorage.removeItem("sapAdminToken");
-      localStorage.removeItem("sapAdminRole");
-      localStorage.removeItem("sapAdminUsername");
-      loginPage();
-    }
-  });
 })();
+
 </script>
+
+
 </body>
 </html>
