@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "multer": "^2.0.2",
     "pg": "^8.16.3"
