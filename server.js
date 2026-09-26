@@ -22,10 +22,15 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024,
     files: 10
   },
-  fileFilter: (_, file, cb) =>
-    file.mimetype.startsWith("image/")
-      ? cb(null, true)
-      : cb(new Error("Only image files are allowed."))
+  fileFilter: (_, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "image/gif"];
+
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPG, PNG and GIF image files are allowed."));
+    }
+  }
 });
 
 app.use(express.json({ limit: "5mb" }));
@@ -34,16 +39,9 @@ app.use(express.static(path.join(__dirname, "public")));
 
 global.adminTokens = new Map();
 
-
-/* =========================================================
-   AUTHENTICATION
-========================================================= */
-
 function authRequired(req, res, next) {
   const token = req.headers["x-admin-token"];
-  const session = token
-    ? global.adminTokens.get(token)
-    : null;
+  const session = token ? global.adminTokens.get(token) : null;
 
   if (!session) {
     return res.status(401).json({
@@ -53,18 +51,6 @@ function authRequired(req, res, next) {
 
   req.user = session;
   next();
-}
-
-function adminRequired(req, res, next) {
-  authRequired(req, res, () => {
-    if (!["admin", "super_admin"].includes(req.user.role)) {
-      return res.status(403).json({
-        error: "Admin access required."
-      });
-    }
-
-    next();
-  });
 }
 
 function superAdminRequired(req, res, next) {
@@ -78,11 +64,6 @@ function superAdminRequired(req, res, next) {
     next();
   });
 }
-
-
-/* =========================================================
-   DATABASE
-========================================================= */
 
 async function initDb() {
 
@@ -106,9 +87,6 @@ async function initDb() {
     WHERE role IS NULL
   `);
 
-
-  /* VISITORS */
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS visitors (
       id SERIAL PRIMARY KEY,
@@ -125,7 +103,17 @@ async function initDb() {
       in_time TIMESTAMPTZ DEFAULT NOW(),
       out_time TIMESTAMPTZ,
 
-      status TEXT NOT NULL DEFAULT 'IN'
+      status TEXT NOT NULL DEFAULT 'IN',
+
+      created_by INTEGER,
+      created_by_username TEXT,
+      created_by_role TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+
+      checked_out_by INTEGER,
+      checked_out_by_username TEXT,
+      checked_out_by_role TEXT,
+      checked_out_at TIMESTAMPTZ
     )
   `);
 
@@ -149,8 +137,6 @@ async function initDb() {
     ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()
   `);
 
-  /* CHECKOUT USER DETAILS */
-
   await pool.query(`
     ALTER TABLE visitors
     ADD COLUMN IF NOT EXISTS checked_out_by INTEGER
@@ -166,8 +152,10 @@ async function initDb() {
     ADD COLUMN IF NOT EXISTS checked_out_by_role TEXT
   `);
 
-
-  /* ALL PHOTOS */
+  await pool.query(`
+    ALTER TABLE visitors
+    ADD COLUMN IF NOT EXISTS checked_out_at TIMESTAMPTZ
+  `);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS visitor_photos (
@@ -179,17 +167,14 @@ async function initDb() {
       photo BYTEA NOT NULL,
       photo_type TEXT NOT NULL,
       photo_label TEXT,
-
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
 
-
-  /* INITIAL SUPER ADMIN */
-
-  const count = await pool.query(
-    "SELECT COUNT(*)::int AS count FROM admins"
-  );
+  const count = await pool.query(`
+    SELECT COUNT(*)::int AS count
+    FROM admins
+  `);
 
   if (count.rows[0].count === 0) {
 
@@ -202,138 +187,116 @@ async function initDb() {
     const hash =
       await bcrypt.hash(password, 12);
 
-    await pool.query(
-      `
+    await pool.query(`
       INSERT INTO admins
       (username,password_hash,role)
       VALUES($1,$2,'super_admin')
-      `,
-      [username, hash]
-    );
+    `, [username, hash]);
 
     console.log(
       `Initial Super Admin created: ${username}`
     );
   }
 
-  console.log(
-    "Database initialization completed."
-  );
+  console.log("Database initialization completed.");
 }
 
 
-/* =========================================================
+/* =========================
    LOGIN
-========================================================= */
+========================= */
 
-app.post(
-  "/api/admin/login",
-  async (req, res) => {
+app.post("/api/admin/login", async (req, res) => {
 
-    try {
+  try {
 
-      const username =
-        String(req.body.username || "").trim();
+    const username =
+      String(req.body.username || "").trim();
 
-      const password =
-        String(req.body.password || "");
+    const password =
+      String(req.body.password || "");
 
-      const r = await pool.query(
-        `
-        SELECT
-          id,
-          username,
-          password_hash,
-          role
-        FROM admins
-        WHERE username=$1
-        `,
-        [username]
-      );
+    const r = await pool.query(`
+      SELECT
+        id,
+        username,
+        password_hash,
+        role
+      FROM admins
+      WHERE username=$1
+    `, [username]);
 
-      if (
-        !r.rows[0] ||
-        !(await bcrypt.compare(
-          password,
-          r.rows[0].password_hash
-        ))
-      ) {
-        return res.status(401).json({
-          error:
-            "Invalid username or password."
-        });
-      }
-
-      const u = r.rows[0];
-
-      const token =
-        crypto.randomBytes(32).toString("hex");
-
-      global.adminTokens.set(
-        token,
-        {
-          id: u.id,
-          username: u.username,
-          role: u.role || "admin"
-        }
-      );
-
-      res.json({
-        token,
-        username: u.username,
-        role: u.role || "admin",
-        user_id: u.id
-      });
-
-    } catch (e) {
-
-      console.error(e);
-
-      res.status(500).json({
-        error: "Login failed."
+    if (
+      !r.rows[0] ||
+      !(await bcrypt.compare(
+        password,
+        r.rows[0].password_hash
+      ))
+    ) {
+      return res.status(401).json({
+        error: "Invalid username or password."
       });
     }
-  }
-);
 
+    const u = r.rows[0];
 
-/* =========================================================
-   LOGOUT
-========================================================= */
+    const token =
+      crypto.randomBytes(32).toString("hex");
 
-app.post(
-  "/api/admin/logout",
-  authRequired,
-  (req, res) => {
-
-    global.adminTokens.delete(
-      req.headers["x-admin-token"]
-    );
+    global.adminTokens.set(token, {
+      id: u.id,
+      username: u.username,
+      role: u.role || "admin"
+    });
 
     res.json({
-      ok: true
+      token,
+      user_id: u.id,
+      username: u.username,
+      role: u.role || "admin"
+    });
+
+  } catch (e) {
+
+    console.error(e);
+
+    res.status(500).json({
+      error: "Login failed."
     });
   }
-);
+});
 
 
-/* =========================================================
+/* =========================
+   LOGOUT
+========================= */
+
+app.post("/api/admin/logout", authRequired, (req, res) => {
+
+  global.adminTokens.delete(
+    req.headers["x-admin-token"]
+  );
+
+  res.json({
+    ok: true
+  });
+});
+
+
+/* =========================
    CURRENT USER
-========================================================= */
+========================= */
 
-app.get(
-  "/api/my-role",
-  authRequired,
-  (req, res) => {
+app.get("/api/my-role", authRequired, (req, res) => {
 
-    res.json(req.user);
-  }
-);
+  res.json(req.user);
+
+});
 
 
-/* =========================================================
-   SUPER ADMIN - USERS
-========================================================= */
+/* =========================
+   SUPER ADMIN USERS
+========================= */
 
 app.get(
   "/api/super-admin/users",
@@ -342,8 +305,7 @@ app.get(
 
     try {
 
-      const r = await pool.query(
-        `
+      const r = await pool.query(`
         SELECT
           id,
           username,
@@ -351,8 +313,7 @@ app.get(
           created_at
         FROM admins
         ORDER BY created_at DESC
-        `
-      );
+      `);
 
       res.json(r.rows);
 
@@ -395,15 +356,10 @@ app.post(
         });
       }
 
-      const exists =
-        await pool.query(
-          `
-          SELECT id
-          FROM admins
-          WHERE username=$1
-          `,
-          [username]
-        );
+      const exists = await pool.query(
+        `SELECT id FROM admins WHERE username=$1`,
+        [username]
+      );
 
       if (exists.rows.length) {
         return res.status(400).json({
@@ -414,19 +370,19 @@ app.post(
       const hash =
         await bcrypt.hash(password, 12);
 
-      const r = await pool.query(
-        `
+      const r = await pool.query(`
         INSERT INTO admins
         (username,password_hash,role)
         VALUES($1,$2,$3)
         RETURNING id,username,role,created_at
-        `,
-        [username, hash, role]
-      );
+      `, [
+        username,
+        hash,
+        role
+      ]);
 
       res.status(201).json({
-        message:
-          "User created successfully.",
+        message: "User created successfully.",
         user: r.rows[0]
       });
 
@@ -435,8 +391,7 @@ app.post(
       console.error(e);
 
       res.status(500).json({
-        error:
-          "Could not create user."
+        error: "Could not create user."
       });
     }
   }
@@ -461,19 +416,15 @@ app.delete(
 
       if (id === req.user.id) {
         return res.status(400).json({
-          error:
-            "You cannot delete your own account."
+          error: "You cannot delete your own account."
         });
       }
 
-      const r = await pool.query(
-        `
+      const r = await pool.query(`
         DELETE FROM admins
         WHERE id=$1
         RETURNING id,username,role
-        `,
-        [id]
-      );
+      `, [id]);
 
       if (!r.rows[0]) {
         return res.status(404).json({
@@ -491,8 +442,7 @@ app.delete(
       }
 
       res.json({
-        message:
-          "User deleted successfully.",
+        message: "User deleted successfully.",
         user: r.rows[0]
       });
 
@@ -501,113 +451,107 @@ app.delete(
       console.error(e);
 
       res.status(500).json({
-        error:
-          "Could not delete user."
+        error: "Could not delete user."
       });
     }
   }
 );
 
 
-/* =========================================================
+/* =========================
    DASHBOARD
-========================================================= */
+========================= */
 
-app.get(
-  "/api/dashboard",
-  authRequired,
-  async (_, res) => {
+app.get("/api/dashboard", authRequired, async (_, res) => {
 
-    try {
+  try {
 
-      const counts = await pool.query(`
-        SELECT
+    const counts = await pool.query(`
+      SELECT
 
-          COUNT(*)
-          FILTER (
-            WHERE status='IN'
-          )::int AS inside,
+        COUNT(*)
+        FILTER (
+          WHERE status='IN'
+        )::int AS inside,
 
-          COUNT(*)
-          FILTER (
-            WHERE DATE(
-              in_time AT TIME ZONE 'Asia/Kolkata'
-            ) =
-            DATE(
-              NOW() AT TIME ZONE 'Asia/Kolkata'
-            )
-          )::int AS today,
+        COUNT(*)
+        FILTER (
+          WHERE DATE(
+            in_time AT TIME ZONE 'Asia/Kolkata'
+          )
+          =
+          DATE(
+            NOW() AT TIME ZONE 'Asia/Kolkata'
+          )
+        )::int AS today,
 
-          COUNT(*)
-          FILTER (
-            WHERE status='OUT'
-            AND DATE(
-              out_time AT TIME ZONE 'Asia/Kolkata'
-            ) =
-            DATE(
-              NOW() AT TIME ZONE 'Asia/Kolkata'
-            )
-          )::int AS checked_out
+        COUNT(*)
+        FILTER (
+          WHERE status='OUT'
+          AND DATE(
+            out_time AT TIME ZONE 'Asia/Kolkata'
+          )
+          =
+          DATE(
+            NOW() AT TIME ZONE 'Asia/Kolkata'
+          )
+        )::int AS checked_out
 
-        FROM visitors
-      `);
+      FROM visitors
+    `);
 
+    const list = await pool.query(`
+      SELECT
+        id,
+        name,
+        mobile,
+        company,
+        person_to_meet,
+        purpose,
+        vehicle_no,
+        in_time,
+        out_time,
+        status,
 
-      const list = await pool.query(`
-        SELECT
-          id,
-          name,
-          mobile,
-          company,
-          person_to_meet,
-          purpose,
-          vehicle_no,
+        created_by,
+        created_by_username,
+        created_by_role,
+        created_at,
 
-          in_time,
-          out_time,
-          status,
+        checked_out_by,
+        checked_out_by_username,
+        checked_out_by_role,
+        checked_out_at,
 
-          created_by,
-          created_by_username,
-          created_by_role,
-          created_at,
-
-          checked_out_by,
-          checked_out_by_username,
-          checked_out_by_role,
-
-          '/api/visitors/'||id||'/photo'
+        '/api/visitors/'||id||'/photo'
           AS photo_url
 
-        FROM visitors
+      FROM visitors
 
-        WHERE status='IN'
+      WHERE status='IN'
 
-        ORDER BY in_time DESC
-      `);
+      ORDER BY in_time DESC
+    `);
 
+    res.json({
+      counts: counts.rows[0],
+      inside: list.rows
+    });
 
-      res.json({
-        counts: counts.rows[0],
-        inside: list.rows
-      });
+  } catch (e) {
 
-    } catch (e) {
+    console.error(e);
 
-      console.error(e);
-
-      res.status(500).json({
-        error:
-          "Dashboard unavailable."
-      });
-    }
+    res.status(500).json({
+      error: "Dashboard unavailable."
+    });
   }
-);
+});
 
 
-/* =========================================================
+/* =========================
    PHOTO FIELDS
-========================================================= */
+========================= */
 
 const photoFields = [
 
@@ -649,13 +593,12 @@ const photoFields = [
 ];
 
 
-/* =========================================================
-   REGISTER VISITOR
-========================================================= */
+/* =========================
+   CHECK IN
+========================= */
 
 app.post(
   "/api/visitors",
-
   authRequired,
 
   upload.fields(
@@ -670,27 +613,43 @@ app.post(
 
   async (req, res) => {
 
-    const files = [];
+    try {
 
-    for (
-      const field
-      of photoFields
-    ) {
+      const visitorPhoto =
+        req.files?.visitor_photo?.[0];
 
-      for (
-        const f
-        of (req.files?.[field.name] || [])
-      ) {
+      if (!visitorPhoto) {
 
-        files.push({
-          file: f,
-          label: field.label
+        return res.status(400).json({
+          error:
+            "Visitor photo is mandatory."
         });
       }
-    }
 
+      const files = [];
 
-    try {
+      for (const field of photoFields) {
+
+        for (
+          const f
+          of (req.files?.[field.name] || [])
+        ) {
+
+          files.push({
+            file: f,
+            label: field.label
+          });
+
+        }
+      }
+
+      if (files.length > 10) {
+
+        return res.status(400).json({
+          error:
+            "Maximum 10 photos are allowed."
+        });
+      }
 
       const name =
         String(req.body.name || "").trim();
@@ -710,8 +669,9 @@ app.post(
         String(req.body.purpose || "").trim();
 
       const vehicle =
-        String(req.body.vehicle_no || "").trim();
-
+        String(
+          req.body.vehicle_no || ""
+        ).trim();
 
       if (
         !name ||
@@ -719,69 +679,22 @@ app.post(
         !person ||
         !purpose
       ) {
+
         return res.status(400).json({
           error:
             "Please fill all required fields."
         });
       }
 
-
-      /*
-        Visitor photo compulsory
-      */
-
-      const visitorPhoto =
-        req.files?.visitor_photo?.[0];
-
-      if (!visitorPhoto) {
-
-        return res.status(400).json({
-          error:
-            "Visitor photo is mandatory."
-        });
-      }
-
-
-      if (!files.length) {
-
-        return res.status(400).json({
-          error:
-            "Visitor photo is mandatory."
-        });
-      }
-
-
-      if (files.length > 10) {
-
-        return res.status(400).json({
-          error:
-            "Maximum 10 photos are allowed."
-        });
-      }
-
-
       const client =
         await pool.connect();
 
-
       try {
 
-        await client.query(
-          "BEGIN"
-        );
-
-
-        /*
-          MAIN VISITOR RECORD
-
-          IMPORTANT:
-          Here we save exactly who registered
-          the visitor.
-        */
+        await client.query("BEGIN");
 
         const vr =
-          await client.query(
-            `
+          await client.query(`
             INSERT INTO visitors
             (
               name,
@@ -811,47 +724,34 @@ app.post(
               id,
               in_time,
               status,
-
               created_by,
               created_by_username,
               created_by_role,
-
               created_at
-            `,
+          `, [
 
-            [
-              name,
-              mobile,
-              company || null,
-              person,
-              purpose,
-              vehicle || null,
+            name,
+            mobile,
+            company || null,
+            person,
+            purpose,
+            vehicle || null,
 
-              visitorPhoto.buffer,
-              visitorPhoto.mimetype,
+            visitorPhoto.buffer,
+            visitorPhoto.mimetype,
 
-              req.user.id,
-              req.user.username,
-              req.user.role
-            ]
-          );
+            req.user.id,
+            req.user.username,
+            req.user.role
 
+          ]);
 
         const visitor =
           vr.rows[0];
 
+        for (const item of files) {
 
-        /*
-          SAVE ALL PHOTOS
-        */
-
-        for (
-          const item
-          of files
-        ) {
-
-          await client.query(
-            `
+          await client.query(`
             INSERT INTO visitor_photos
             (
               visitor_id,
@@ -860,24 +760,18 @@ app.post(
               photo_label
             )
 
-            VALUES
-            ($1,$2,$3,$4)
-            `,
+            VALUES($1,$2,$3,$4)
+          `, [
 
-            [
-              visitor.id,
-              item.file.buffer,
-              item.file.mimetype,
-              item.label
-            ]
-          );
+            visitor.id,
+            item.file.buffer,
+            item.file.mimetype,
+            item.label
+
+          ]);
         }
 
-
-        await client.query(
-          "COMMIT"
-        );
-
+        await client.query("COMMIT");
 
         res.status(201).json({
 
@@ -891,12 +785,9 @@ app.post(
 
         });
 
-
       } catch (e) {
 
-        await client.query(
-          "ROLLBACK"
-        );
+        await client.query("ROLLBACK");
 
         throw e;
 
@@ -904,7 +795,6 @@ app.post(
 
         client.release();
       }
-
 
     } catch (e) {
 
@@ -922,9 +812,9 @@ app.post(
 );
 
 
-/* =========================================================
+/* =========================
    MAIN PHOTO
-========================================================= */
+========================= */
 
 app.get(
   "/api/visitors/:id/photo",
@@ -933,17 +823,13 @@ app.get(
 
     try {
 
-      const r =
-        await pool.query(
-          `
-          SELECT
-            photo,
-            photo_type
-          FROM visitors
-          WHERE id=$1
-          `,
-          [req.params.id]
-        );
+      const r = await pool.query(`
+        SELECT
+          photo,
+          photo_type
+        FROM visitors
+        WHERE id=$1
+      `, [req.params.id]);
 
       if (!r.rows[0]) {
         return res.status(404).end();
@@ -959,17 +845,15 @@ app.get(
 
     } catch (e) {
 
-      console.error(e);
-
       res.status(500).end();
     }
   }
 );
 
 
-/* =========================================================
+/* =========================
    ALL VISITOR PHOTOS
-========================================================= */
+========================= */
 
 app.get(
   "/api/visitors/:id/photos",
@@ -982,40 +866,32 @@ app.get(
         Number(req.params.id);
 
       if (!Number.isInteger(id)) {
+
         return res.status(400).json({
-          error:
-            "Invalid visitor ID."
+          error: "Invalid visitor ID."
         });
       }
 
+      const r = await pool.query(`
+        SELECT
+          id,
+          photo_type,
+          photo_label,
+          created_at,
 
-      const r =
-        await pool.query(
-          `
-          SELECT
-            id,
-            photo_type,
-            photo_label,
-            created_at,
+          '/api/visitor-photos/'||
+          id||
+          '/image'
+          AS photo_url
 
-            '/api/visitor-photos/'||
-            id||
-            '/image'
-            AS photo_url
+        FROM visitor_photos
 
-          FROM visitor_photos
+        WHERE visitor_id=$1
 
-          WHERE visitor_id=$1
+        ORDER BY id
+      `, [id]);
 
-          ORDER BY id
-          `,
-          [id]
-        );
-
-
-      res.json(
-        r.rows
-      );
+      res.json(r.rows);
 
     } catch (e) {
 
@@ -1030,9 +906,9 @@ app.get(
 );
 
 
-/* =========================================================
-   INDIVIDUAL PHOTO
-========================================================= */
+/* =========================
+   PHOTO IMAGE
+========================= */
 
 app.get(
   "/api/visitor-photos/:id/image",
@@ -1041,23 +917,17 @@ app.get(
 
     try {
 
-      const r =
-        await pool.query(
-          `
-          SELECT
-            photo,
-            photo_type
-          FROM visitor_photos
-          WHERE id=$1
-          `,
-          [req.params.id]
-        );
-
+      const r = await pool.query(`
+        SELECT
+          photo,
+          photo_type
+        FROM visitor_photos
+        WHERE id=$1
+      `, [req.params.id]);
 
       if (!r.rows[0]) {
         return res.status(404).end();
       }
-
 
       res.type(
         r.rows[0].photo_type
@@ -1067,10 +937,7 @@ app.get(
         r.rows[0].photo
       );
 
-
     } catch (e) {
-
-      console.error(e);
 
       res.status(500).end();
     }
@@ -1078,10 +945,9 @@ app.get(
 );
 
 
-/* =========================================================
+/* =========================
    CHECK OUT
-   USER + ADMIN + SUPER ADMIN
-========================================================= */
+========================= */
 
 app.post(
   "/api/visitors/:id/out",
@@ -1096,47 +962,41 @@ app.post(
       if (!Number.isInteger(id)) {
 
         return res.status(400).json({
-          error:
-            "Invalid visitor ID."
+          error: "Invalid visitor ID."
         });
       }
 
+      const r = await pool.query(`
+        UPDATE visitors
 
-      const r =
-        await pool.query(
-          `
-          UPDATE visitors
+        SET
+          status='OUT',
+          out_time=NOW(),
 
-          SET
-            status='OUT',
-            out_time=NOW(),
+          checked_out_by=$2,
+          checked_out_by_username=$3,
+          checked_out_by_role=$4,
+          checked_out_at=NOW()
 
-            checked_out_by=$2,
-            checked_out_by_username=$3,
-            checked_out_by_role=$4
+        WHERE id=$1
+        AND status='IN'
 
-          WHERE
-            id=$1
-            AND status='IN'
+        RETURNING
+          id,
+          out_time,
+          status,
+          checked_out_by,
+          checked_out_by_username,
+          checked_out_by_role,
+          checked_out_at
+      `, [
 
-          RETURNING
-            id,
-            out_time,
-            status,
+        id,
+        req.user.id,
+        req.user.username,
+        req.user.role
 
-            checked_out_by,
-            checked_out_by_username,
-            checked_out_by_role
-          `,
-
-          [
-            id,
-            req.user.id,
-            req.user.username,
-            req.user.role
-          ]
-        );
-
+      ]);
 
       if (!r.rows[0]) {
 
@@ -1146,22 +1006,15 @@ app.post(
         });
       }
 
-
       res.json({
 
         message:
-          "Visitor checked out.",
+          "Visitor checked out successfully.",
 
         visitor:
-          r.rows[0],
+          r.rows[0]
 
-        checked_out_by:
-          req.user.username,
-
-        checked_out_by_role:
-          req.user.role
       });
-
 
     } catch (e) {
 
@@ -1176,10 +1029,10 @@ app.post(
 );
 
 
-/* =========================================================
+/* =========================
    VISITOR HISTORY
    ALL LOGGED-IN USERS
-========================================================= */
+========================= */
 
 app.get(
   "/api/admin/visitors",
@@ -1189,54 +1042,47 @@ app.get(
     try {
 
       const q =
-        String(req.query.q || "").trim();
+        String(req.query.q || "")
+          .trim();
 
       const date =
-        String(req.query.date || "").trim();
+        String(req.query.date || "")
+          .trim();
 
       const params = [];
       const where = [];
 
-
       if (q) {
 
-        params.push(
-          `%${q}%`
-        );
+        params.push(`%${q}%`);
 
-        const p =
-          params.length;
-
-        where.push(`
-          (
-            name ILIKE $${p}
-            OR mobile ILIKE $${p}
-            OR company ILIKE $${p}
-            OR person_to_meet ILIKE $${p}
-            OR purpose ILIKE $${p}
-            OR vehicle_no ILIKE $${p}
-            OR created_by_username ILIKE $${p}
-            OR checked_out_by_username ILIKE $${p}
-          )
-        `);
+        where.push(`(
+          name ILIKE $${params.length}
+          OR mobile ILIKE $${params.length}
+          OR company ILIKE $${params.length}
+          OR person_to_meet ILIKE $${params.length}
+          OR purpose ILIKE $${params.length}
+          OR vehicle_no ILIKE $${params.length}
+          OR created_by_username ILIKE $${params.length}
+          OR checked_out_by_username ILIKE $${params.length}
+        )`);
       }
-
 
       if (date) {
 
         params.push(date);
 
-        where.push(
-          `
+        where.push(`
           DATE(
             in_time AT TIME ZONE 'Asia/Kolkata'
-          )=$${params.length}::date
-          `
-        );
+          )
+          =
+          $${params.length}::date
+        `);
       }
 
-
       const sql = `
+
         SELECT
 
           id,
@@ -1259,6 +1105,7 @@ app.get(
           checked_out_by,
           checked_out_by_username,
           checked_out_by_role,
+          checked_out_at,
 
           '/api/visitors/'||
           id||
@@ -1278,18 +1125,13 @@ app.get(
         LIMIT 500
       `;
 
-
       const r =
         await pool.query(
           sql,
           params
         );
 
-
-      res.json(
-        r.rows
-      );
-
+      res.json(r.rows);
 
     } catch (e) {
 
@@ -1304,10 +1146,9 @@ app.get(
 );
 
 
-/* =========================================================
+/* =========================
    EXCEL EXPORT
-   WITH ACTUAL PHOTOS
-========================================================= */
+========================= */
 
 app.get(
   "/api/admin/export.xlsx",
@@ -1316,66 +1157,57 @@ app.get(
 
     try {
 
-      const r =
-        await pool.query(`
-          SELECT
+      const r = await pool.query(`
+        SELECT
 
-            id,
-            name,
-            mobile,
-            company,
-            person_to_meet,
-            purpose,
-            vehicle_no,
+          id,
+          name,
+          mobile,
+          company,
+          person_to_meet,
+          purpose,
+          vehicle_no,
 
-            in_time,
-            out_time,
-            status,
+          in_time,
+          out_time,
+          status,
 
-            photo,
-            photo_type,
+          created_by_username,
+          created_by_role,
+          created_at,
 
-            created_by_username,
-            created_by_role,
-            created_at,
+          checked_out_by_username,
+          checked_out_by_role,
+          checked_out_at,
 
-            checked_out_by_username,
-            checked_out_by_role
+          photo,
+          photo_type
 
-          FROM visitors
+        FROM visitors
 
-          ORDER BY in_time DESC
-        `);
-
+        ORDER BY in_time DESC
+      `);
 
       const workbook =
         new ExcelJS.Workbook();
-
-      workbook.creator =
-        "SAP Semi Pvt Ltd";
-
-      workbook.created =
-        new Date();
-
 
       const sheet =
         workbook.addWorksheet(
           "Visitor Report"
         );
 
-
       sheet.columns = [
 
         {
-          header: "Photo",
-          key: "photo",
-          width: 18
+          header: "ID",
+          key: "id",
+          width: 8
         },
 
         {
-          header: "Visitor ID",
-          key: "id",
-          width: 12
+          header: "Visitor Photo",
+          key: "photo",
+          width: 18
         },
 
         {
@@ -1397,7 +1229,7 @@ app.get(
         },
 
         {
-          header: "Person To Meet",
+          header: "Meeting With",
           key: "person_to_meet",
           width: 24
         },
@@ -1405,7 +1237,7 @@ app.get(
         {
           header: "Purpose",
           key: "purpose",
-          width: 28
+          width: 30
         },
 
         {
@@ -1434,229 +1266,167 @@ app.get(
 
         {
           header: "Registered By",
-          key: "registered_by",
-          width: 24
+          key: "created_by_username",
+          width: 20
         },
 
         {
           header: "Registered Role",
-          key: "registered_role",
+          key: "created_by_role",
           width: 18
         },
 
         {
-          header: "Registered At",
-          key: "registered_at",
+          header: "Registration Time",
+          key: "created_at",
           width: 22
         },
 
         {
           header: "Checked Out By",
-          key: "checkout_by",
-          width: 24
+          key: "checked_out_by_username",
+          width: 20
         },
 
         {
           header: "Checkout Role",
-          key: "checkout_role",
+          key: "checked_out_by_role",
           width: 18
+        },
+
+        {
+          header: "Checkout Time",
+          key: "checked_out_at",
+          width: 22
         }
 
       ];
 
-
-      /* Header */
-
-      const headerRow =
-        sheet.getRow(1);
-
-      headerRow.font = {
-        bold: true,
-        size: 12
+      sheet.getRow(1).font = {
+        bold: true
       };
 
-      headerRow.alignment = {
-        vertical: "middle",
-        horizontal: "center"
+      sheet.freezePanes = {
+        ySplit: 1
       };
 
-      headerRow.height = 25;
+      let rowNumber = 2;
 
-
-      /* Data */
-
-      for (
-        const v
-        of r.rows
-      ) {
+      for (const v of r.rows) {
 
         const row =
-          sheet.addRow({
+          sheet.getRow(rowNumber);
 
-            photo: "",
+        row.getCell(1).value =
+          v.id;
 
-            id: v.id,
+        row.getCell(3).value =
+          v.name;
 
-            name: v.name,
+        row.getCell(4).value =
+          v.mobile;
 
-            mobile: v.mobile,
+        row.getCell(5).value =
+          v.company || "";
 
-            company:
-              v.company || "",
+        row.getCell(6).value =
+          v.person_to_meet;
 
-            person_to_meet:
-              v.person_to_meet,
+        row.getCell(7).value =
+          v.purpose;
 
-            purpose:
-              v.purpose,
+        row.getCell(8).value =
+          v.vehicle_no || "";
 
-            vehicle_no:
-              v.vehicle_no || "",
+        row.getCell(9).value =
+          v.in_time
+            ? new Date(v.in_time)
+            : "";
 
-            in_time:
-              v.in_time
-                ? new Date(v.in_time)
-                : "",
+        row.getCell(10).value =
+          v.out_time
+            ? new Date(v.out_time)
+            : "";
 
-            out_time:
-              v.out_time
-                ? new Date(v.out_time)
-                : "",
+        row.getCell(11).value =
+          v.status;
 
-            status:
-              v.status,
+        row.getCell(12).value =
+          v.created_by_username || "";
 
-            registered_by:
-              v.created_by_username || "",
+        row.getCell(13).value =
+          v.created_by_role || "";
 
-            registered_role:
-              v.created_by_role || "",
+        row.getCell(14).value =
+          v.created_at
+            ? new Date(v.created_at)
+            : "";
 
-            registered_at:
-              v.created_at
-                ? new Date(v.created_at)
-                : "",
+        row.getCell(15).value =
+          v.checked_out_by_username || "";
 
-            checkout_by:
-              v.checked_out_by_username || "",
+        row.getCell(16).value =
+          v.checked_out_by_role || "";
 
-            checkout_role:
-              v.checked_out_by_role || ""
+        row.getCell(17).value =
+          v.checked_out_at
+            ? new Date(v.checked_out_at)
+            : "";
 
-          });
+        row.getCell(9).numFmt =
+          "dd-mm-yyyy hh:mm";
+
+        row.getCell(10).numFmt =
+          "dd-mm-yyyy hh:mm";
+
+        row.getCell(14).numFmt =
+          "dd-mm-yyyy hh:mm";
+
+        row.getCell(17).numFmt =
+          "dd-mm-yyyy hh:mm";
 
 
-        row.height = 90;
-
-
-        /*
-          Embed actual image into Excel
-        */
+        /* Embed Visitor Photo */
 
         if (
           v.photo &&
-          v.photo_type
+          (
+            v.photo_type === "image/jpeg" ||
+            v.photo_type === "image/png"
+          )
         ) {
 
-          try {
+          const extension =
+            v.photo_type === "image/png"
+              ? "png"
+              : "jpeg";
 
-            let extension =
-              "png";
+          const imageId =
+            workbook.addImage({
+              buffer: v.photo,
+              extension
+            });
 
-            if (
-              v.photo_type.includes(
-                "jpeg"
-              ) ||
-              v.photo_type.includes(
-                "jpg"
-              )
-            ) {
-              extension = "jpeg";
-            }
+          sheet.addImage(
+            imageId,
+            {
+              tl: {
+                col: 1,
+                row: rowNumber - 1
+              },
 
-            if (
-              v.photo_type.includes(
-                "webp"
-              )
-            ) {
-              extension = "webp";
-            }
-
-            const imageId =
-              workbook.addImage({
-                buffer: v.photo,
-                extension
-              });
-
-
-            sheet.addImage(
-              imageId,
-              {
-                tl: {
-                  col: 0,
-                  row: row.number - 1
-                },
-
-                ext: {
-                  width: 95,
-                  height: 80
-                }
+              ext: {
+                width: 100,
+                height: 100
               }
-            );
+            }
+          );
 
-          } catch (imageError) {
-
-            console.error(
-              "Excel image error:",
-              imageError
-            );
-          }
+          row.height = 80;
         }
+
+        rowNumber++;
       }
-
-
-      /* Date formatting */
-
-      for (
-        let i = 2;
-        i <= sheet.rowCount;
-        i++
-      ) {
-
-        sheet.getCell(
-          `I${i}`
-        ).numFmt =
-          "dd-mm-yyyy hh:mm";
-
-        sheet.getCell(
-          `J${i}`
-        ).numFmt =
-          "dd-mm-yyyy hh:mm";
-
-        sheet.getCell(
-          `N${i}`
-        ).numFmt =
-          "dd-mm-yyyy hh:mm";
-      }
-
-
-      sheet.views = [
-        {
-          state: "frozen",
-          ySplit: 1
-        }
-      ];
-
-
-      sheet.autoFilter = {
-        from: "A1",
-        to:
-          `P${Math.max(
-            1,
-            sheet.rowCount
-          )}`
-      };
-
 
       res.setHeader(
         "Content-Type",
@@ -1665,16 +1435,12 @@ app.get(
 
       res.setHeader(
         "Content-Disposition",
-        'attachment; filename="SAP-Semi-Visitor-Report.xlsx"'
+        'attachment; filename="sap-semi-visitors.xlsx"'
       );
 
-
-      await workbook.xlsx.write(
-        res
-      );
+      await workbook.xlsx.write(res);
 
       res.end();
-
 
     } catch (e) {
 
@@ -1691,58 +1457,55 @@ app.get(
 );
 
 
-/* =========================================================
-   ERROR HANDLER
-========================================================= */
+/* =========================
+   MULTER ERROR
+========================= */
 
-app.use(
-  (err, req, res, next) => {
+app.use((err, req, res, next) => {
 
-    if (
-      err instanceof multer.MulterError ||
-      err
-    ) {
+  if (
+    err instanceof multer.MulterError ||
+    err
+  ) {
 
-      return res.status(400).json({
-        error:
-          err.message ||
-          "Upload error."
-      });
-    }
-
-    next(err);
+    return res.status(400).json({
+      error:
+        err.message ||
+        "Upload error."
+    });
   }
-);
+
+  next(err);
+});
 
 
-/* =========================================================
+/* =========================
    FRONTEND
-========================================================= */
+========================= */
 
-app.get(
-  "/{*splat}",
-  (req, res) => {
+app.get("/{*splat}", (req, res) => {
 
-    res.sendFile(
-      path.join(
-        __dirname,
-        "public",
-        "index.html"
-      )
-    );
-  }
-);
+  res.sendFile(
+    path.join(
+      __dirname,
+      "public",
+      "index.html"
+    )
+  );
+});
 
 
-/* =========================================================
+/* =========================
    START SERVER
-========================================================= */
+========================= */
 
 initDb()
+
   .then(() => {
 
     app.listen(
       PORT,
+      "0.0.0.0",
       () => {
 
         console.log(
@@ -1753,6 +1516,7 @@ initDb()
     );
 
   })
+
   .catch(err => {
 
     console.error(
@@ -1771,5 +1535,6 @@ process.on(
     await pool.end();
 
     process.exit(0);
+
   }
 );
